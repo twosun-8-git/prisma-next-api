@@ -1,23 +1,24 @@
 import prisma from "../prismaClient";
 
-export const getUser = async ({
-  email,
-  scores = false,
-}: {
+type GetUserParams = {
   email: string;
   scores?: boolean;
-}) => {
-  const result = await prisma.user.findMany({
-    where: {
-      email: {
-        equals: email,
+};
+
+export const getUser = async ({ email, scores = false }: GetUserParams) => {
+  const result = await prisma.user
+    .findMany({
+      where: {
+        email: {
+          equals: email,
+        },
       },
-    },
-    include: scores
-      ? {
-          scores: true,
-        }
-      : undefined,
-  });
+      include: scores
+        ? {
+            scores: true,
+          }
+        : undefined,
+    })
+    .withAccelerateInfo();
   return result;
 };

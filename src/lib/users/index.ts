@@ -1,6 +1,14 @@
 import prisma from "../prismaClient";
 
-export const getUsers = async () => {
-  const result = await prisma.user.findMany().withAccelerateInfo();
+type GetUsersParams = {
+  scores?: boolean;
+};
+
+export const getUsers = async ({ scores = false }: GetUsersParams) => {
+  const result = await prisma.user
+    .findMany({
+      include: scores ? { scores: true } : undefined,
+    })
+    .withAccelerateInfo();
   return result;
 };
