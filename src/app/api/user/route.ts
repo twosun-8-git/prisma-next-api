@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
   if (!email) {
     return NextResponse.json(
-      { error: "Email parameter is required" },
+      { error: "メールアドレスは必須です" },
       { status: 400 }
     );
   }
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   if (!email) {
     return NextResponse.json(
-      { error: "Email parameter is required" },
+      { error: "メールアドレスは必須です" },
       { status: 400 }
     );
   }
