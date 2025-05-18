@@ -1,0 +1,2 @@
+# prisma-next-api
+PrismaとNextJSのAPIのサンプル
