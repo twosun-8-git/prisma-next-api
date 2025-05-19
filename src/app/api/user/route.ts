@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { createUser, getUser } from "@/lib/user";
-import { getQueryParams } from "@/lib/util";
+import { createUser, getUser, updateUser } from "@/lib/user";
+import { checkEmail, getQueryParams, handleResultError } from "@/app/api/utils";
 
 export async function GET(request: NextRequest) {
   const params = getQueryParams(request, ["email", "scores"]);
   const { email, scores } = params;
 
-  if (!email) {
-    return NextResponse.json(
-      { error: "メールアドレスは必須です" },
-      { status: 400 }
-    );
-  }
+  const error = checkEmail(email);
+  if (error) return error;
 
   const users = await getUser({
-    email,
+    email: email as string,
     scores: scores === "1",
   });
 
@@ -27,25 +23,29 @@ export async function POST(request: NextRequest) {
 
   const { email } = body;
 
-  if (!email) {
-    return NextResponse.json(
-      { error: "メールアドレスは必須です" },
-      { status: 400 }
-    );
-  }
+  const error = checkEmail(email);
+  if (error) return error;
 
   const result = await createUser(body);
 
-  if (!result.status) {
-    const statusCode = result.error?.code === "DUPLICATE_EMAIL" ? 409 : 500;
-    return NextResponse.json(
-      {
-        code: statusCode,
-        error: result.error?.message,
-      },
-      { status: statusCode }
-    );
-  }
+  const resultError = handleResultError(result);
+  if (resultError) return resultError;
+
+  return NextResponse.json(result);
+}
+
+export async function PUT(request: NextRequest) {
+  const body = await request.json();
+
+  const { email } = body;
+
+  const error = checkEmail(email);
+  if (error) return error;
+
+  const result = await updateUser(body);
+
+  const resultError = handleResultError(result);
+  if (resultError) return resultError;
 
   return NextResponse.json(result);
 }

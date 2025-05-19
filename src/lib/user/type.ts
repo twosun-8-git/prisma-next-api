@@ -1,9 +1,4 @@
-export type GetUser = {
-  email: string;
-  scores?: boolean;
-};
-
-export type CreateUser = {
+export type User = {
   email: string;
   name?: string;
   age?: number;
@@ -14,6 +9,11 @@ export type CreateUser = {
     Science: number;
     Math: number;
   };
+};
+
+export type GetUser = {
+  email: string;
+  scores?: boolean;
 };
 
 export type UserData = {
@@ -44,3 +44,5 @@ export type CreateUserResult = {
     message: string;
   };
 };
+
+export type UpdateUser = User;

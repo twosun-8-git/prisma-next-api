@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getUsers } from "@/lib/users";
-import { getQueryParams } from "@/lib/util";
+import { getQueryParams } from "@/app/api/utils";
 
 export async function GET(request: NextRequest) {
   const params = getQueryParams(request, ["scores"]);
