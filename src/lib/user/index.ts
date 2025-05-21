@@ -1,6 +1,12 @@
-import prisma from "../prismaClient";
-import { GetUser, User, UpdateUser } from "./type";
-
+import prisma from "@/lib/prismaClient";
+import { CreateUser, GetUser, UpdateUser, DeleteUser } from "@/lib/user/type";
+import {
+  getScoreIdByEmail,
+  checkExistUser,
+  checkUniqueEmail,
+  checkRequire,
+} from "@/lib/utils";
+import { error500 } from "@/lib/errors";
 /**
  * ユーザーを取得する関数
  * @param email
@@ -8,21 +14,31 @@ import { GetUser, User, UpdateUser } from "./type";
  * @returns ユーザー
  */
 export const getUser = async ({ email, scores = false }: GetUser) => {
-  const result = await prisma.user
-    .findMany({
-      where: {
-        email: {
-          equals: email,
-        },
-      },
-      include: !scores
-        ? undefined
-        : {
-            scores: true,
-          },
-    })
-    .withAccelerateInfo();
-  return result;
+  const existUser = await checkExistUser(email);
+  if (!existUser.success) {
+    return existUser;
+  }
+
+  try {
+    const result = await prisma.user
+      .findUnique({
+        where: { email },
+        include: !scores
+          ? undefined
+          : {
+              scores: true,
+            },
+      })
+      .withAccelerateInfo();
+
+    return {
+      success: true,
+      statusCode: 200,
+      data: result,
+    };
+  } catch (error: unknown) {
+    return error500("ユーザー取得中にエラーが発生しました。", error);
+  }
 };
 
 /**
@@ -39,7 +55,18 @@ export const createUser = async ({
   age,
   isAdmin,
   scores,
-}: User) => {
+}: CreateUser) => {
+  const uniqueEmail = await checkUniqueEmail(email);
+  if (!uniqueEmail.success) {
+    return uniqueEmail;
+  }
+
+  const requireName = checkRequire(name);
+
+  if (!requireName.success) {
+    return checkRequire(name, "名前は必須項目です。");
+  }
+
   try {
     const result = await prisma.user.create({
       data: {
@@ -61,49 +88,12 @@ export const createUser = async ({
     });
 
     return {
-      status: true,
+      success: true,
       data: result,
     };
   } catch (error: unknown) {
-    const { code } = error as { code: string };
-
-    // P2002 はユニーク制約違反のエラーコード
-    if (code === "P2002") {
-      return {
-        status: false,
-        error: {
-          code: "DUPLICATE_EMAIL",
-          message: "このメールアドレスは既に登録されています。",
-        },
-      };
-    }
-
-    // その他のエラー
-    return {
-      status: false,
-      error: {
-        code: "UNKNOWN_ERROR",
-        message: "ユーザー作成中にエラーが発生しました。",
-      },
-    };
+    return error500("ユーザー作成中にエラーが発生しました。", error);
   }
-};
-
-/**
- * emailからscoreのidを取得する関数
- * @param email
- * @returns scoreのid
- */
-export const getScoreIdByEmail = async (email: string) => {
-  const user = await prisma.user.findUnique({
-    where: { email },
-    include: { scores: true },
-  });
-  // 1人のユーザーに1つのscoreのみ前提
-  if (user && user.scores && user.scores.length > 0) {
-    return user.scores[0].id;
-  }
-  return null;
 };
 
 /**
@@ -153,17 +143,30 @@ export const updateUser = async ({
     });
 
     return {
-      status: true,
+      success: true,
       data: result,
     };
   } catch (error: unknown) {
-    console.log(error);
+    return error500("ユーザー更新中にエラーが発生しました。", error);
+  }
+};
+
+/**
+ * ユーザーを削除する関数
+ * @param email
+ * @returns ユーザー
+ */
+export const deleteUser = async ({ email }: DeleteUser) => {
+  try {
+    const result = await prisma.user.delete({
+      where: { email },
+    });
+
     return {
-      status: false,
-      error: {
-        code: "UNKNOWN_ERROR",
-        message: "ユーザー更新中にエラーが発生しました。",
-      },
+      success: true,
+      data: result,
     };
+  } catch (error: unknown) {
+    return error500("ユーザー削除中にエラーが発生しました。", error);
   }
 };

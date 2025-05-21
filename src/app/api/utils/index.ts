@@ -21,20 +21,35 @@ export const checkEmail = (email: string | null): NextResponse | null => {
  * @returns エラーがある場合はNextResponseオブジェクト、なければnull
  */
 export const handleResultError = (result: {
-  status: boolean;
+  success: boolean;
+  statusCode?: number;
   error?: {
     code: string;
     message: string;
-  };
+  } | null;
 }): NextResponse | null => {
-  if (!result.status) {
-    const statusCode = result.error?.code === "DUPLICATE_EMAIL" ? 409 : 500;
+  if (!result.success) {
+    // エラーコードとHTTPステータスコードのマッピング
+    const errorStatusMap: Record<string, number> = {
+      DUPLICATE_EMAIL: 409,
+      USER_NOT_FOUND: 404,
+      ALREADY_EXIST_EMAIL: 409,
+      REQUIRED_ERROR: 400,
+      NOT_FOUND: 404,
+      BAD_REQUEST: 400,
+      CONFLICT: 409,
+      UNKNOWN_ERROR: 500,
+    };
+
+    const errorCode = result.error?.code;
+    const statusCode = errorCode ? errorStatusMap[errorCode] : 500;
+
     return NextResponse.json(
       {
-        code: statusCode,
-        error: result.error?.message,
+        code: result.statusCode || statusCode,
+        error: result.error?.message || "エラーが発生しました",
       },
-      { status: statusCode }
+      { status: result.statusCode || statusCode }
     );
   }
   return null;
