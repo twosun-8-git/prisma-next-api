@@ -7,6 +7,7 @@ import {
   checkRequire,
 } from "@/lib/utils";
 import { error500 } from "@/lib/errors";
+
 /**
  * ユーザーを取得する関数
  * @param email
