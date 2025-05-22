@@ -112,6 +112,11 @@ export const updateUser = async ({
   isAdmin,
   scores,
 }: UpdateUser) => {
+  const existUser = await checkExistUser(email);
+  if (!existUser.success) {
+    return existUser;
+  }
+
   try {
     let scoreUpdate = undefined;
     if (scores) {
@@ -158,6 +163,11 @@ export const updateUser = async ({
  * @returns ユーザー
  */
 export const deleteUser = async ({ email }: DeleteUser) => {
+  const existUser = await checkExistUser(email);
+  if (!existUser.success) {
+    return existUser;
+  }
+
   try {
     const result = await prisma.user.delete({
       where: { email },
