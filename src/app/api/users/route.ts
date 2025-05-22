@@ -4,11 +4,12 @@ import { getUsers } from "@/lib/users";
 import { getQueryParams } from "@/app/api/utils";
 
 export async function GET(request: NextRequest) {
-  const params = getQueryParams(request, ["scores"]);
-  const { scores } = params;
+  const params = getQueryParams(request, ["admin", "scores"]);
+  const { admin, scores } = params;
 
   const users = await getUsers({
-    scores: scores === "1",
+    admin: !admin ? undefined : admin === "1",
+    scores: !scores ? undefined : scores === "1",
   });
 
   return NextResponse.json(users);

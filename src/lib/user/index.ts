@@ -20,22 +20,22 @@ export const getUser = async ({ email, scores = false }: GetUser) => {
     return existUser;
   }
 
+  const includes = {
+    ...(scores !== undefined && { scores: scores }),
+  };
+
   try {
     const result = await prisma.user
       .findUnique({
         where: { email },
-        include: !scores
-          ? undefined
-          : {
-              scores: true,
-            },
+        include: includes,
       })
       .withAccelerateInfo();
 
     return {
       success: true,
       statusCode: 200,
-      data: result,
+      data: result.data,
     };
   } catch (error: unknown) {
     return error500("ユーザー取得中にエラーが発生しました。", error);
