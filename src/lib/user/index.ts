@@ -1,12 +1,18 @@
 import prisma from "@/lib/prismaClient";
-import { CreateUser, GetUser, UpdateUser, DeleteUser } from "@/lib/user/type";
+import {
+  CreateUser,
+  GetUser,
+  UpdateUser,
+  DeleteUser,
+  SCORE_FIELDS,
+} from "@/lib/user/type";
 import {
   getScoreIdByEmail,
   checkExistUser,
   checkUniqueEmail,
   checkRequire,
 } from "@/lib/utils";
-import { error500 } from "@/lib/errors";
+import { error500, error400 } from "@/lib/errors";
 
 /**
  * ユーザーを取得する関数
@@ -63,29 +69,74 @@ export const createUser = async ({
   }
 
   const requireName = checkRequire(name);
-
   if (!requireName.success) {
     return checkRequire(name, "名前は必須項目です。");
   }
 
+  // スコアのバリデーション
+  if (scores) {
+    // 存在しないフィールドのチェック
+    const validFields = SCORE_FIELDS.map(String);
+    const providedFields = Object.keys(scores);
+    const invalidFields = providedFields.filter(
+      (field) => !validFields.includes(field)
+    );
+
+    if (invalidFields.length > 0) {
+      return error400(`無効なスコアフィールド: ${invalidFields.join(", ")}`);
+    }
+
+    // 値の型チェック
+    const invalidValues = Object.entries(scores)
+      .filter(([, value]) => typeof value !== "number")
+      .map(([field]) => field);
+
+    if (invalidValues.length > 0) {
+      return error400(
+        `スコアは数値で指定してください: ${invalidValues.join(", ")}`
+      );
+    }
+
+    // 値の範囲チェック
+    const invalidRanges = Object.entries(scores)
+      .filter(([, value]) => {
+        // 整数であることを確認
+        if (!Number.isInteger(value)) return true;
+        // 0-100の範囲内であることを確認
+        return value < 0 || value > 100;
+      })
+      .map(([field]) => field);
+
+    if (invalidRanges.length > 0) {
+      return error400(
+        `スコアは0から100の整数で指定してください: ${invalidRanges.join(", ")}`
+      );
+    }
+  }
+
   try {
-    const result = await prisma.user.create({
-      data: {
-        email,
-        name,
-        age,
-        isAdmin,
-        scores: !scores
-          ? undefined
-          : {
-              create: {
-                Langage: scores.Langage,
-                Arithmetic: scores.Arithmetic,
-                Science: scores.Science,
-                Math: scores.Math,
-              },
-            },
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      return tx.user.create({
+        data: {
+          email,
+          name,
+          age,
+          isAdmin,
+          scores: scores
+            ? {
+                create: {
+                  Langage: scores.Langage,
+                  Arithmetic: scores.Arithmetic,
+                  Science: scores.Science,
+                  Math: scores.Math,
+                },
+              }
+            : undefined,
+        },
+        include: {
+          scores: true,
+        },
+      });
     });
 
     return {

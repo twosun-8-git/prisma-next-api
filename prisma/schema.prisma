@@ -25,10 +25,10 @@ model User {
 
 model Score {
   id Int @id @default(autoincrement())
-  Langage Int
-  Arithmetic Int
-  Science Int
-  Math Int
+  Langage Int?
+  Arithmetic Int?
+  Science Int?
+  Math Int?
   author User @relation(fields: [authorId], references: [id],onDelete: Cascade)
   authorId Int
   createdAt DateTime @default(now())

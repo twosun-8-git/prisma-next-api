@@ -3,12 +3,18 @@ export type User = {
   name?: string;
   age?: number;
   isAdmin: boolean;
-  scores?: {
-    Langage: number;
-    Arithmetic: number;
-    Science: number;
-    Math: number;
-  };
+  scores?: Score;
+};
+
+export const SCORE_FIELDS = [
+  "Langage",
+  "Arithmetic",
+  "Science",
+  "Math",
+] as const;
+export type ScoreKey = (typeof SCORE_FIELDS)[number];
+export type Score = {
+  [K in ScoreKey]?: number;
 };
 
 export type GetUser = {
