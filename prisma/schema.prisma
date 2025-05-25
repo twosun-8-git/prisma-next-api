@@ -1,6 +1,15 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
+generator zod {
+  provider          = "zod-prisma-types"
+  useMultipleFiles  = true  // 各モデルを別ファイルに生成
+  writeBarrelFiles  = false // インデックスファイルを生成しない
+  useTypeAssertions = true  // 型アサーション使用
+  includeRelations  = true  // リレーションを含める
+  output = "../generated/zod"
+}
+
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"

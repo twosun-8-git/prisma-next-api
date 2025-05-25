@@ -15,8 +15,12 @@ export async function GET(request: NextRequest) {
     scores: scores === "1",
   });
 
-  const resultError = handleResultError(result);
-  if (resultError) return resultError;
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error },
+      { status: result.statusCode }
+    );
+  }
 
   return NextResponse.json(result);
 }
@@ -47,8 +51,8 @@ export async function PUT(request: NextRequest) {
 
   const result = await updateUser(body);
 
-  const resultError = handleResultError(result);
-  if (resultError) return resultError;
+  // const resultError = handleResultError(result);
+  // if (resultError) return resultError;
 
   return NextResponse.json(result);
 }
@@ -63,8 +67,8 @@ export async function DELETE(request: NextRequest) {
 
   const result = await deleteUser(body);
 
-  const resultError = handleResultError(result);
-  if (resultError) return resultError;
+  // const resultError = handleResultError(result);
+  // if (resultError) return resultError;
 
   return NextResponse.json(result);
 }

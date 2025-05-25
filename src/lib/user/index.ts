@@ -6,13 +6,23 @@ import {
   DeleteUser,
   SCORE_FIELDS,
 } from "@/lib/user/type";
-import {
-  getScoreIdByEmail,
-  checkExistUser,
-  checkUniqueEmail,
-  checkRequire,
-} from "@/lib/utils";
-import { error500, error400 } from "@/lib/errors";
+import { getScoreIdByEmail, checkUniqueEmail, checkRequire } from "@/lib/utils";
+import { error500, error400, error404 } from "@/lib/errors";
+import { z } from "zod";
+import { UserSchema } from "@generated/zod/modelSchema/UserSchema";
+import { ScoreSchema } from "@generated/zod/modelSchema/ScoreSchema";
+import { UserWhereUniqueInputSchema } from "@generated/zod/inputTypeSchemas/UserWhereUniqueInputSchema";
+
+// 完全なユーザースキーマ（UserSchema に scores が含まれないので追加）
+const CompleteUserSchema = UserSchema.extend({
+  scores: z.array(ScoreSchema).optional(),
+});
+
+// GetUserのバリデーションスキーマ
+const GetUserSchema = z.object({
+  email: z.string().email("有効なメールアドレスを入力してください"),
+  scores: z.boolean().optional(),
+});
 
 /**
  * ユーザーを取得する関数
@@ -20,28 +30,54 @@ import { error500, error400 } from "@/lib/errors";
  * @param scores
  * @returns ユーザー
  */
-export const getUser = async ({ email, scores = false }: GetUser) => {
-  const existUser = await checkExistUser(email);
-  if (!existUser.success) {
-    return existUser;
+export const getUser = async ({ email, scores = true }: GetUser) => {
+  // Zodによるバリデーション
+  const validationResult = GetUserSchema.safeParse({ email, scores });
+  if (!validationResult.success) {
+    return {
+      success: false,
+      statusCode: 400,
+      error: validationResult.error.errors[0].message,
+    };
   }
 
-  const includes = {
-    ...(scores !== undefined && { scores: scores }),
-  };
+  // メールアドレスの形式チェック
+  const emailValidation = UserWhereUniqueInputSchema.safeParse({ email });
+  if (!emailValidation.success) {
+    return {
+      success: false,
+      statusCode: 400,
+      error: "無効なメールアドレス形式です",
+    };
+  }
 
   try {
     const result = await prisma.user
       .findUnique({
         where: { email },
-        include: includes,
+        include: {
+          scores: Boolean(scores),
+        },
       })
       .withAccelerateInfo();
+
+    if (!result.data) {
+      return error404("ユーザーが見つかりません。");
+    }
+
+    // 結果のバリデーション（CompleteUserSchemaを使用）
+    const validatedResult = CompleteUserSchema.safeParse(result.data);
+    if (!validatedResult.success) {
+      return error500(
+        "取得したデータの形式が不正です。",
+        validatedResult.error
+      );
+    }
 
     return {
       success: true,
       statusCode: 200,
-      data: result.data,
+      data: validatedResult.data,
     };
   } catch (error: unknown) {
     return error500("ユーザー取得中にエラーが発生しました。", error);
@@ -163,9 +199,14 @@ export const updateUser = async ({
   isAdmin,
   scores,
 }: UpdateUser) => {
-  const existUser = await checkExistUser(email);
-  if (!existUser.success) {
-    return existUser;
+  // メールアドレスの形式チェック
+  const emailValidation = UserWhereUniqueInputSchema.safeParse({ email });
+  if (!emailValidation.success) {
+    return {
+      success: false,
+      statusCode: 400,
+      error: "無効なメールアドレス形式です",
+    };
   }
 
   try {
@@ -204,6 +245,19 @@ export const updateUser = async ({
       data: result,
     };
   } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.message.includes("Record to update does not exist")
+    ) {
+      return {
+        success: false,
+        statusCode: 404,
+        error: {
+          code: "NOT_FOUND",
+          message: "ユーザーが見つかりません。",
+        },
+      };
+    }
     return error500("ユーザー更新中にエラーが発生しました。", error);
   }
 };
@@ -214,9 +268,14 @@ export const updateUser = async ({
  * @returns ユーザー
  */
 export const deleteUser = async ({ email }: DeleteUser) => {
-  const existUser = await checkExistUser(email);
-  if (!existUser.success) {
-    return existUser;
+  // メールアドレスの形式チェック
+  const emailValidation = UserWhereUniqueInputSchema.safeParse({ email });
+  if (!emailValidation.success) {
+    return {
+      success: false,
+      statusCode: 400,
+      error: "無効なメールアドレス形式です",
+    };
   }
 
   try {
@@ -229,6 +288,19 @@ export const deleteUser = async ({ email }: DeleteUser) => {
       data: result,
     };
   } catch (error: unknown) {
+    if (
+      error instanceof Error &&
+      error.message.includes("Record to delete does not exist")
+    ) {
+      return {
+        success: false,
+        statusCode: 404,
+        error: {
+          code: "NOT_FOUND",
+          message: "ユーザーが見つかりません。",
+        },
+      };
+    }
     return error500("ユーザー削除中にエラーが発生しました。", error);
   }
 };
